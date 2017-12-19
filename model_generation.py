@@ -4,6 +4,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Dropout
 from keras.layers import LSTM
+from keras.layers import Embedding
 from keras.callbacks import ModelCheckpoint
 from keras.utils import np_utils
 
@@ -11,28 +12,30 @@ from keras.utils import np_utils
 
 
 def generate_lstm(filename):
-    text = open(filename).read()
-    chars = sorted(list(set(text)))
-    char_map = dict((c, i) for i, c in enumerate(chars))
-    characters = len(text)
-    letters = len(chars)
+    text = open(filename).read().split()
+    words = sorted(list(set(text)))
+    word_map = dict((c, i) for i, c in enumerate(words))
+    nbr_words = len(text)
+    vocab_size = len(words)
+    embedding_dim = 100
 
-    seq_length = 1000
+    seq_length = 20
     dataX = []
     dataY = []
-    for i in range(0, characters - seq_length, 1):
+    for i in range(0, nbr_words - seq_length, 1):
         seq_in = text[i:i + seq_length]
         seq_out = text[i + seq_length]
-        dataX.append([char_map[char] for char in seq_in])
-        dataY.append(char_map[seq_out])
+        dataX.append([word_map[char] for char in seq_in])
+        dataY.append(word_map[seq_out])
 
     n_patterns = len(dataX)
     X = numpy.reshape(dataX, (n_patterns, seq_length, 1))
-    X = X / float(letters)
+    X = X / float(vocab_size)
     y = np_utils.to_categorical(dataY)
 
     lstm = Sequential()
-    lstm.add(LSTM(256, input_shape=(X.shape[1], X.shape[2])))
+    lstm.add(Embedding(vocab_size, embedding_dim, input_length=seq_length))
+    lstm.add(LSTM(256, input_shape=(seq_length, embedding_dim)))
     lstm.add(Dropout(0.2))
     lstm.add(Dense(y.shape[1], activation='softmax'))
     lstm.compile(loss='categorical_crossentropy', optimizer='adam')
